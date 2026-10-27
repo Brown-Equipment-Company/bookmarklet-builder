@@ -202,6 +202,18 @@
       <p>Each click sends you to <code id="previewUrl"></code> &mdash; the same page with a parameter the server has never seen before, so neither the browser nor any proxy in between can serve a cached copy. An existing parameter of the same name is replaced, and any <code>#fragment</code> is kept on the end.</p>
     </details>
   </section>
+
+  <section class="card" id="share" hidden>
+    <p class="step"><strong>Hand it to someone else.</strong> Send this link and they land here with the form already filled in, ready to drag.</p>
+    <div class="code-head">
+      <span class="hint">Prefilled link</span>
+      <span style="display:flex;align-items:center;gap:10px;">
+        <span id="shareStatus" aria-live="polite"></span>
+        <button type="button" id="shareBtn">Copy</button>
+      </span>
+    </div>
+    <pre id="shareUrl"></pre>
+  </section>
 </main>
 
 <script>
@@ -216,7 +228,12 @@
   var previewEl = document.getElementById('previewUrl');
   var copyBtn = document.getElementById('copyBtn');
   var copyStatus = document.getElementById('copyStatus');
+  var shareEl = document.getElementById('share');
+  var shareUrlEl = document.getElementById('shareUrl');
+  var shareBtn = document.getElementById('shareBtn');
+  var shareStatus = document.getElementById('shareStatus');
 
+  var DEFAULT_PARAM = 'cb';
   var currentCode = '';
 
   // Accepts "example.com/x" as well as a full URL, but only ever produces http(s).
@@ -251,23 +268,36 @@
     return p ? p.replace(/[\s&=#?]/g, '') : '';
   }
 
+  // A link back to this page with the form already filled in, for handing to
+  // someone who should not have to assemble the bookmarklet themselves.
+  function shareLink(param) {
+    var qs = new URLSearchParams();
+    qs.set('url', urlEl.value.trim());
+    if (nameEl.value.trim()) qs.set('name', nameEl.value.trim());
+    if (param !== DEFAULT_PARAM) qs.set('param', param);
+    // Not location.origin + pathname: origin is the string "null" on file:// URLs.
+    return location.href.split(/[?#]/)[0] + '?' + qs.toString();
+  }
+
   function build() {
     errEl.textContent = '';
     copyStatus.textContent = '';
+    shareStatus.textContent = '';
 
     var raw = urlEl.value;
-    if (!raw.trim()) { outEl.hidden = true; return; }
+    if (!raw.trim()) { outEl.hidden = true; shareEl.hidden = true; return; }
 
     var u;
     try {
       u = parseUrl(raw);
     } catch (e) {
       outEl.hidden = true;
+      shareEl.hidden = true;
       errEl.textContent = e instanceof TypeError ? 'That does not look like a valid URL.' : e.message;
       return;
     }
 
-    var param = cleanParam(paramEl.value) || 'cb';
+    var param = cleanParam(paramEl.value) || DEFAULT_PARAM;
 
     // Drop any existing value for this parameter so clicks don't pile them up.
     // Only when one is actually there: deleting re-serialises the whole query
@@ -290,8 +320,23 @@
     linkEl.textContent = nameEl.value.trim() || u.hostname;
     codeEl.textContent = currentCode;
     previewEl.textContent = prefix + '…';
+    shareUrlEl.textContent = shareLink(param);
 
     outEl.hidden = false;
+    shareEl.hidden = false;
+  }
+
+  // Let a link fill the form in: ?url=...&name=...&param=...
+  function prefillFromQuery() {
+    var qs = new URLSearchParams(location.search);
+    var fields = { url: urlEl, name: nameEl, param: paramEl };
+    var filled = false;
+    Object.keys(fields).forEach(function (key) {
+      var value = qs.get(key);
+      if (value !== null && value !== '') { fields[key].value = value; filled = true; }
+    });
+    // Don't yank focus to an input that is already filled in for them.
+    if (filled) urlEl.blur();
   }
 
   ['input', 'change'].forEach(function (evt) {
@@ -307,25 +352,33 @@
     copyStatus.style.color = 'var(--muted)';
   });
 
-  copyBtn.addEventListener('click', function () {
-    function done(ok) {
-      copyStatus.style.color = ok ? 'var(--ok)' : 'var(--err)';
-      copyStatus.textContent = ok ? 'Copied' : 'Press Ctrl+C to copy';
-      if (!ok) {
-        var r = document.createRange();
-        r.selectNodeContents(codeEl);
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(r);
+  // navigator.clipboard only exists in a secure context, so opening the page from
+  // disk falls back to selecting the text for a manual Ctrl+C.
+  function wireCopy(btn, statusEl, sourceEl, getText) {
+    btn.addEventListener('click', function () {
+      function done(ok) {
+        statusEl.style.color = ok ? 'var(--ok)' : 'var(--err)';
+        statusEl.textContent = ok ? 'Copied' : 'Press Ctrl+C to copy';
+        if (!ok) {
+          var r = document.createRange();
+          r.selectNodeContents(sourceEl);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
       }
-    }
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(currentCode).then(function () { done(true); }, function () { done(false); });
-    } else {
-      done(false);
-    }
-  });
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(getText()).then(function () { done(true); }, function () { done(false); });
+      } else {
+        done(false);
+      }
+    });
+  }
 
+  wireCopy(copyBtn, copyStatus, codeEl, function () { return currentCode; });
+  wireCopy(shareBtn, shareStatus, shareUrlEl, function () { return shareUrlEl.textContent; });
+
+  prefillFromQuery();
   build();
 })();
 </script>

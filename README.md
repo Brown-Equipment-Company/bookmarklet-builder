@@ -18,6 +18,25 @@ just as well opened straight from disk.
 2. Drag the generated button onto your bookmarks bar, or copy the code and paste it
    as the address of a hand-made bookmark.
 
+## Prefilled links
+
+The form reads its own query string, so you can send someone a link that arrives
+ready to drag instead of asking them to fill anything in:
+
+| Parameter | Meaning | Default |
+| --- | --- | --- |
+| `url` | The target URL | — |
+| `name` | Text on the bookmarklet button, which becomes the bookmark's name | the host name |
+| `param` | Cache-busting parameter name | `cb` |
+
+```
+https://brown-equipment-company.github.io/bookmarklet-builder/?url=https%3A%2F%2Fexample.com%2Freport%3Fteam%3Dops&name=Ops%20Report
+```
+
+Each value must be URL-encoded, since the target URL usually has its own `?`, `&`
+and `#` in it. You do not have to do that by hand — fill the form in once and the
+page shows the matching prefilled link with a **Copy** button.
+
 ## What gets generated
 
 For `https://example.com/report?team=ops`:
