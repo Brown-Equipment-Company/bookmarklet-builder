@@ -9,7 +9,10 @@ would like.
 
 ## Use it
 
-Open `index.html` — no build step, no dependencies, nothing leaves the browser.
+**<https://brown-equipment-company.github.io/bookmarklet-builder/>**
+
+No build step, no dependencies, nothing leaves the browser — `index.html` works
+just as well opened straight from disk.
 
 1. Paste the URL.
 2. Drag the generated button onto your bookmarks bar, or copy the code and paste it
@@ -31,6 +34,5 @@ javascript:(function(){location.href="https://example.com/report?team=ops&cb="+D
 
 ## Hosting
 
-It is one self-contained file, so any static host works. To serve it from GitHub
-Pages, enable Pages for this repository with `main` as the branch and `/` as the
-folder.
+GitHub Pages serves `main` from `/`, so anything pushed to `main` is live within
+a minute or so. It is one self-contained file, so any other static host works too.
